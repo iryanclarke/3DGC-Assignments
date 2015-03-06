@@ -50,23 +50,18 @@ def HoleBlock():
     
     blockDepth = cmds.intSliderGrp('HoleblockDepth', query=True, value=True)
     rgb = cmds.colorSliderGrp('HoleblockColour', query=True, rgbValue=True) 
-    rnd= random.randrange(0,1000)
-    namespace_tmp = "HoleBlock_" + str(rnd)
     
     cmds.select(clear=True) 
-    cmds.namespace(add=namespace_tmp) 
-    cmds.namespace(set=namespace_tmp) 
-    
+      
     blockWidth = 1
     cubeDimX = blockWidth * 0.8
-    blockHeight = 4
-    cubeDimY = blockHeight * 0.32
+    blockHeight = 1
+    cubeDimY = blockHeight * 0.96
     cubeDimZ = blockDepth * 0.8
 
-    cube = cmds.polyCube(h=cubeDimY, w=cubeDimX, d=cubeDimZ, n='cube', sz=blockDepth) 
+    cube = cmds.polyCube(h=cubeDimY, w=cubeDimX, d=cubeDimZ, sz=blockDepth) 
     cmds.move((cubeDimY/2.0), moveY=True) 
-    
-    block = namespace_tmp + ":cube"
+  
     
     # Pipes on top of block
     for i in range(blockDepth):
@@ -74,16 +69,28 @@ def HoleBlock():
         cmds.move((cubeDimY + 0.10), moveY=True, a=True)
         cmds.move(((i * 0.8) - (cubeDimZ/2.0) + 0.4), moveZ=True, a=True)
     
+    # Holes within block
     for k in range(blockDepth - 1):   
-        holes = cmds.polyCylinder(name="cylinder", h=1, r=0.3, ax=(1,0,0))
-        cmds.move( 0.5, cubeDimY/2, ( 1 * k + 1), holes[0])
-        #block = cmds.polyBoolOp(block, holes[0], op=2, n=namespace_tmp)[0]
+        holes = cmds.polyCylinder( h=1, r=0.24, ax=(1,0,0))
+        subtracts.append(holes[0]);
+        cmds.move( 0, cubeDimY - 0.38, ((k*0.8) - (cubeDimZ/2.0) + 0.8), holes[0], a=True)         
+  
+    # Unite the cube and the top
+    addShape = cmds.polyUnite(cube, components, ch=False)
+    
+    currentHole = subtracts[0]
+    
+    for hole in range(len(subtracts)- 1):
+        uniteHole = cmds.polyUnite(currentHole, subtracts[hole+1], ch=False)
+        currentHole = uniteHole
         
+    finalShape = cmds.polyCBoolOp(addShape, uniteHole, op=2, ch=False)[0]
+    
+    # Adding on the colour
     myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
-    cmds.setAttr(namespace_tmp+":blockMaterial.color", rgb[0], rgb[1], rgb[2], type='double3') 
-    cmds.polyUnite((namespace_tmp+":*"), n=namespace_tmp, ch=False) 
-    cmds.delete(ch=True) 
-    cmds.hyperShade(assign=(namespace_tmp+":blockMaterial")) 
+    cmds.setAttr(myShader + ".color", rgb[0], rgb[1], rgb[2], type='double3')
+    cmds.select(finalShape, r=True)
+    cmds.hyperShade(assign=myShader)
     cmds.namespace(set=":") 
 
 # Rounded/Bent blocks
