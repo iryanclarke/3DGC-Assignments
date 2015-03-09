@@ -122,8 +122,8 @@ def makeRoundHoleBlock(blockDepth):
       subtracts.append(holes[0]);
       cmds.move( 0, cubeDimY/2, ((x*0.8) - (cubeDimZ/2.0)), holes[0], a=True)    
 
-    cube = cmds.polyCube(sx=5,sy=2,sz=2, width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
-    cmds.delete(cube[0] + ".f[40:47]")
+    cube = cmds.polyCube(sx=3,sy=2,sz=blockDepth+1, width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
+    #cmds.delete(cube[0] + ".f[40:47]")
     cmds.move((cubeDimY/2.0), moveY=True) 
 
     #caps
