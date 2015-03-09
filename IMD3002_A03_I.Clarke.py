@@ -9,12 +9,8 @@ def SquareBlock():
     blockDepth = cmds.intSliderGrp('SquareBlockDepth', query=True, value=True)
     blockWidth = cmds.intSliderGrp('SquareBlockWidth', query=True, value=True)
     rgb = cmds.colorSliderGrp('SquareBlockColour', query=True, rgbValue=True) 
-    rnd= random.randrange(0,1000)
-    namespace_tmp = "Block_" + str(rnd)
     
     cmds.select(clear=True) 
-    cmds.namespace(add=namespace_tmp) 
-    cmds.namespace(set=namespace_tmp) 
     
     # Set to the lego size presets
     cubeDimX = blockWidth * 0.8
@@ -98,46 +94,60 @@ def RoundBlock():
 
     RoblockDepth = cmds.intSliderGrp('RoblockDepth', query=True, value=True)
     rgb = cmds.colorSliderGrp('RoblockColour', query=True, rgbValue=True) 
-    rnd= random.randrange(0,1000)
-    namespace_tmp = "RoBlock_" + str(rnd)
     
     cmds.select(clear=True) 
-    cmds.namespace(add=namespace_tmp) 
-    cmds.namespace(set=namespace_tmp) 
     
-    RoblockWidth = 1
-    rectSizeX = RoblockWidth
-    rectSizeY = 0.05
-    rectSizeZ = RoblockDepth
+    finalShape = makeRoundHoleBlock(RoblockDepth)
+ 
     
-    cmds.polyCube(h=rectSizeY, w=rectSizeX, d=rectSizeZ/2.0)
-    cmds.move(((RoblockDepth) - (rectSizeZ/0.78)), moveZ=True, a=True)
-    cmds.move((rectSizeY + 0.54), moveY=True, a=True)
-    cmds.polyCube(h=rectSizeY, w=rectSizeX, d=rectSizeZ/2.0)
-    cmds.move(((RoblockDepth) - (rectSizeZ/0.78)), moveZ=True, a=True)
-    cmds.move((rectSizeY), moveY=True, a=True)
-     
-    for i in range(RoblockWidth): 
-        for j in range(RoblockDepth):
-            
-            cmds.polyPipe(r=0.3, h=RoblockWidth*2, t=0.05, ax=(1,0,0)) 
-            cmds.move(((j*0.55) - (rectSizeZ/2.0)), moveZ=True, a=True)
-            cmds.move((rectSizeY + 0.27), moveY=True, a=True)
-    
+    # Adding on the colour
     myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
-    cmds.setAttr(namespace_tmp+":blockMaterial.color", rgb[0], rgb[1], rgb[2], type='double3') 
-    cmds.polyUnite((namespace_tmp+":*"), n=namespace_tmp, ch=False) 
-    cmds.delete(ch=True) 
-    cmds.hyperShade(assign=(namespace_tmp+":blockMaterial")) 
+    cmds.setAttr(myShader + ".color", rgb[0], rgb[1], rgb[2], type='double3')
+    cmds.select(finalShape, r=True)
+    cmds.hyperShade(assign=myShader)
     cmds.namespace(set=":") 
+
+def makeRoundHoleBlock(blockDepth):
     
+    # Initialize the building blocks and the subtraction blocks
+    components = []
+    subtracts = []
+    
+    cubeDimX = 1 * 0.8
+    cubeDimY = 1 * 0.96
+    cubeDimZ = blockDepth * 0.8
+    
+    for x in range(0, blockDepth + 1):
+      holes = cmds.polyCylinder( h=1, r=0.24, ax=(1,0,0))
+      subtracts.append(holes[0]);
+      cmds.move( 0, cubeDimY/2, ((x*0.8) - (cubeDimZ/2.0)), holes[0], a=True)    
+
+    cube = cmds.polyCube(sx=5,sy=2,sz=2, width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
+    cmds.delete(cube[0] + ".f[40:47]")
+    cmds.move((cubeDimY/2.0), moveY=True) 
+
+    #caps
+    cap_one = cmds.polyCylinder(sc=1, sy=2, radius=0.5, height=cubeDimX, ax=(1,0,0))
+    cmds.rotate('90deg',0,0,cap_one[0])
+    cmds.move(0,cubeDimY/2,blockDepth/2,cap_one[0])
+    cmds.delete(cap_one[0] + ".f[0:3]", cap_one[0] + ".f[14:23]", cap_one[0] + ".f[34:43]", cap_one[0] + ".f[54:63]", cap_one[0] + ".f[74:79]")
+    components.append(cap_one[0])
+
+    #caps
+    cap_two = cmds.polyCylinder(sc=1, sy=2, radius=0.48, height=cubeDimX, ax=(1,0,0))
+    cmds.rotate('90deg','180deg',0,cap_two[0])
+    cmds.delete(cap_two[0] + ".f[0:3]", cap_two[0] + ".f[14:23]", cap_two[0] + ".f[34:43]", cap_two[0] + ".f[54:63]", cap_two[0] + ".f[74:79]")
+    cmds.move(0,cubeDimY/2,blockDepth/2 - cubeDimZ,cap_two[0])
+    components.append(cap_two[0])
+
+    solid = cmds.polyUnite(cube, components)
+    subtract_group = cmds.polyUnite(subtracts)
+    cmds.polyMergeVertex( solid[0], d=0.15 )
+    cmds.delete(solid[0],ch=1)
+    #return cmds.polyCBoolOp( solid[0], subtract_group[0], op=2)    
 
 	
 window = cmds.window(title="Lego Blocks", menuBar=True, widthHeight=(483, 620)) 
-
-cmds.menu(label="Options") 
-cmds.menuItem(label="New Scene", command=('cmds.file(new=True,force=True)')) 
-cmds.menuItem(label="Delete Selected", command=('cmds.delete()')) 
 
 # Normal Square block
 cmds.columnLayout()
