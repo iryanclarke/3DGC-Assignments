@@ -2,6 +2,11 @@
 import maya.cmds as cmds
 import random
 
+
+#                                       #
+#    PRIMARY HANDLER FUNCTIONS          #
+#                                       #
+
 # Normal Square block
 def SquareBlock():
     
@@ -92,13 +97,12 @@ def HoleBlock():
 # Rounded/Bent blocks
 def RoundBlock():
 
-    RoblockDepth = cmds.intSliderGrp('RoblockDepth', query=True, value=True)
+    blockDepth = cmds.intSliderGrp('RoblockDepth', query=True, value=True)
     rgb = cmds.colorSliderGrp('RoblockColour', query=True, rgbValue=True) 
     
     cmds.select(clear=True) 
     
-    finalShape = makeRoundHoleBlock(RoblockDepth)
- 
+    finalShape = makeRoundHoleBlock(blockDepth)
     
     # Adding on the colour
     myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
@@ -106,45 +110,106 @@ def RoundBlock():
     cmds.select(finalShape, r=True)
     cmds.hyperShade(assign=myShader)
     cmds.namespace(set=":") 
+    
+# Angled blocks
+def AngledBlock():
+
+    firstBlockDepth = cmds.intSliderGrp('firstDepth', query=True, value=True)
+    secondBlockDepth = cmds.intSliderGrp('secondDepth', query=True, value=True)
+    rgb = cmds.colorSliderGrp('angledBlockColour', query=True, rgbValue=True) 
+    
+    cmds.select(clear=True) 
+    
+    cubeDimY = 1 * 0.96
+    cubeDimZ = firstBlockDepth * 0.8
+    
+    firstBlock = makeRoundHoleBlock(firstBlockDepth)
+    secondBlock = makeRoundHoleBlock(secondBlockDepth)
+    cmds.move((cubeDimZ)-(firstBlockDepth*0.08), moveZ=True) 
+    #cmds.move((cubeDimZ/2.0), moveY=True) 
+    cmds.rotate('143.5deg', 0, 0, secondBlock[0])
+    finalShape = cmds.polyCBoolOp(firstBlock[0], secondBlock[0], op=1)
+    
+    # Adding on the colour
+    myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
+    cmds.setAttr(myShader + ".color", rgb[0], rgb[1], rgb[2], type='double3')
+    cmds.select(finalShape, r=True)
+    cmds.hyperShade(assign=myShader)
+    cmds.namespace(set=":")  
+    
+# Right Angle blocks
+def RightBlock():
+
+    firstBlockDepth = cmds.intSliderGrp('firstAngleDepth', query=True, value=True)
+    secondBlockDepth = cmds.intSliderGrp('secondAngleDepth', query=True, value=True)
+    rgb = cmds.colorSliderGrp('angled90BlockColour', query=True, rgbValue=True) 
+    
+    cmds.select(clear=True) 
+    
+    cubeDimY = 1 * 0.96
+    cubeDimZ = (firstBlockDepth * 1.0) - (firstBlockDepth*1.0/firstBlockDepth)
+    cubeDimZ2 = (secondBlockDepth * 1.0) - (secondBlockDepth*1.0/secondBlockDepth)
+    
+    firstBlock = makeRoundHoleBlock(firstBlockDepth)
+    secondBlock = makeRoundHoleBlock(secondBlockDepth)
+    cmds.move((cubeDimZ/2.0), moveZ=True) 
+    cmds.move((cubeDimZ2/2.0), moveY=True) 
+    cmds.rotate('90deg', 0, 0, secondBlock[0])
+    finalShape = cmds.polyCBoolOp(firstBlock[0], secondBlock[0], op=1)
+    
+    # Adding on the colour
+    myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
+    cmds.setAttr(myShader + ".color", rgb[0], rgb[1], rgb[2], type='double3')
+    cmds.select(finalShape, r=True)
+    cmds.hyperShade(assign=myShader)
+    cmds.namespace(set=":")         
+
+#                                       #
+#    SECONDARY RE-USEABLE FUNCTIONS     #
+#                                       #
+    
+def makeBeamHole( block, z, cubeDimX, cubeDimY, cubeDimZ ):
+    hole = cmds.polyCylinder( r=cubeDimY * 0.45, h=cubeDimX, ax=(1,0,0) )
+    cmds.move( (z * 1.0) - (cubeDimZ/2.0), moveZ= True, a=True)  
+    cmds.move( (cubeDimY * 0.5), moveY= True, a=True) 
+    block =  cmds.polyCBoolOp( block[0], hole[0], op=2 )
+    return block
+
+def makeBeamPipe( block, x, cubeDimX, cubeDimY, cubeDimZ ):
+    hole = cmds.polyCylinder( r=cubeDimY * 0.45, h=cubeDimX, ax=(1,0,0) )
+    cmds.move( (x*0.6) - (cubeDimZ/2.0), moveZ= True, a=True)  
+    cmds.move( (cubeDimY * 0.5), moveY= True, a=True) 
+    block =  cmds.polyCBoolOp( block[0], hole[0], op=2 )
+    return block    
 
 def makeRoundHoleBlock(blockDepth):
-    
-    # Initialize the building blocks and the subtraction blocks
-    components = []
-    subtracts = []
-    
+      
     cubeDimX = 1 * 0.8
     cubeDimY = 1 * 0.96
-    cubeDimZ = blockDepth * 0.8
+    cubeDimZ = (blockDepth * 1.0) - (blockDepth*1.0/blockDepth)
     
-    for x in range(0, blockDepth + 1):
-      holes = cmds.polyCylinder( h=1, r=0.24, ax=(1,0,0))
-      subtracts.append(holes[0]);
-      cmds.move( 0, cubeDimY/2, ((x*0.8) - (cubeDimZ/2.0)), holes[0], a=True)    
-
-    cube = cmds.polyCube(sx=3,sy=2,sz=blockDepth+1, width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
-    #cmds.delete(cube[0] + ".f[40:47]")
+    # Make Block
+    block = cmds.polyCube(width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
     cmds.move((cubeDimY/2.0), moveY=True) 
-
-    #caps
-    cap_one = cmds.polyCylinder(sc=1, sy=2, radius=0.5, height=cubeDimX, ax=(1,0,0))
-    cmds.rotate('90deg',0,0,cap_one[0])
-    cmds.move(0,cubeDimY/2,blockDepth/2,cap_one[0])
-    cmds.delete(cap_one[0] + ".f[0:3]", cap_one[0] + ".f[14:23]", cap_one[0] + ".f[34:43]", cap_one[0] + ".f[54:63]", cap_one[0] + ".f[74:79]")
-    components.append(cap_one[0])
-
-    #caps
-    cap_two = cmds.polyCylinder(sc=1, sy=2, radius=0.48, height=cubeDimX, ax=(1,0,0))
-    cmds.rotate('90deg','180deg',0,cap_two[0])
-    cmds.delete(cap_two[0] + ".f[0:3]", cap_two[0] + ".f[14:23]", cap_two[0] + ".f[34:43]", cap_two[0] + ".f[54:63]", cap_two[0] + ".f[74:79]")
-    cmds.move(0,cubeDimY/2,blockDepth/2 - cubeDimZ,cap_two[0])
-    components.append(cap_two[0])
-
-    solid = cmds.polyUnite(cube, components)
-    subtract_group = cmds.polyUnite(subtracts)
-    cmds.polyMergeVertex( solid[0], d=0.15 )
-    cmds.delete(solid[0],ch=1)
-    #return cmds.polyCBoolOp( solid[0], subtract_group[0], op=2)    
+    
+    # Make left endcap
+    endCap = cmds.polyCylinder(r=cubeDimY * 0.5, h=cubeDimX, ax=(1,0,0) )
+    cmds.move( (cubeDimZ * 0.5), moveZ=True, a=True)
+    cmds.move( (cubeDimY * 0.5), moveY=True, a=True)
+    block = cmds.polyCBoolOp( block[0], endCap[0], op=1 )
+    
+    # Make right endcap
+    endCap = cmds.polyCylinder(r=cubeDimY * 0.5, h=cubeDimX, ax=(1,0,0) )
+    cmds.move( (cubeDimZ * -0.5), moveZ=True, a=True)
+    cmds.move( (cubeDimY * 0.5), moveY=True, a=True)
+    block = cmds.polyCBoolOp( block[0], endCap[0], op=1 )
+    
+    cmds.xform(centerPivots = True )
+    
+    for z in range(blockDepth):
+        block = makeBeamHole( block, z , cubeDimX, cubeDimY, cubeDimZ )
+    
+    return block
 
 	
 window = cmds.window(title="Lego Blocks", menuBar=True, widthHeight=(483, 620)) 
@@ -186,6 +251,90 @@ cmds.setParent( '..' )
 cmds.setParent( '..' )
 cmds.setParent( '..' )
 
+# Angled Blocks
+cmds.columnLayout()
+cmds.frameLayout(collapsable=True, label="Angled block", width=475, height=110) 
+cmds.columnLayout()
+cmds.intSliderGrp('firstDepth',label="First Block Length", field=True, min=4, max=8, value=5)
+cmds.intSliderGrp('secondDepth',label="Second Block Length", field=True, min=4, max=8, value=5)
+cmds.colorSliderGrp('angledBlockColour',label="Colour", hsv=(56, 1, 1)) 
+cmds.columnLayout()
+cmds.button(label="Create angled block", command=('AngledBlock()'))
+cmds.setParent( '..' )
+cmds.setParent( '..' )
+cmds.setParent( '..' )
+
+# Right Angled Blocks
+cmds.columnLayout()
+cmds.frameLayout(collapsable=True, label="90 degree block", width=475, height=110) 
+cmds.columnLayout()
+cmds.intSliderGrp('firstAngleDepth',label="First Block Length", field=True, min=4, max=8, value=5)
+cmds.intSliderGrp('secondAngleDepth',label="Second Block Length", field=True, min=4, max=8, value=5)
+cmds.colorSliderGrp('angled90BlockColour',label="Colour", hsv=(56, 1, 1)) 
+cmds.columnLayout()
+cmds.button(label="Create angled block", command=('RightBlock()'))
+cmds.setParent( '..' )
+cmds.setParent( '..' )
+cmds.setParent( '..' )
+
 # Build the window
 cmds.showWindow( window )	
-	
+''' OLD ONE
+# Rounded/Bent blocks
+def RoundBlock():
+
+    blockDepth = cmds.intSliderGrp('RoblockDepth', query=True, value=True)
+    rgb = cmds.colorSliderGrp('RoblockColour', query=True, rgbValue=True) 
+    
+    cmds.select(clear=True) 
+    
+    # Initialize the building blocks and the subtraction blocks
+    components = []
+    subtracts = []
+    
+    cubeDimX = 1 * 0.8
+    cubeDimY = 1 * 0.96
+    cubeDimZ = blockDepth * 0.8
+    
+    for x in range(0, blockDepth + 1):
+      holes = cmds.polyCylinder( h=1, r=0.24, ax=(1,0,0))
+      subtracts.append(holes[0]);
+      cmds.move( 0, cubeDimY/2, ((x*0.8) - (cubeDimZ/2.0)), holes[0], a=True)    
+
+    cube = cmds.polyCube(sx=2,sy=2,sz=blockDepth+1, width=cubeDimX, height=cubeDimY, depth=cubeDimZ)
+    #cmds.delete(cube[0] + ".f[40:47]")
+    cmds.move((cubeDimY/2.0), moveY=True) 
+
+    #caps
+    capOne = cmds.polyCylinder(sc=1, sy=2, radius=0.48, height=cubeDimX, ax=(1,0,0))
+    cmds.rotate('90deg',0,0,capOne[0])
+    cmds.move(0,cubeDimY/2,cubeDimZ/2,capOne[0])
+    cmds.delete(capOne[0] + ".f[0:3]", capOne[0] + ".f[14:23]", capOne[0] + ".f[34:43]", capOne[0] + ".f[54:63]", capOne[0] + ".f[74:79]")
+    components.append(capOne[0])
+
+    #caps
+    capTwo = cmds.polyCylinder(sc=1, sy=2, radius=0.48, height=cubeDimX, ax=(1,0,0))
+    cmds.rotate('90deg','180deg',0,capTwo[0])
+    cmds.move(0,cubeDimY/2,cubeDimZ/2 - cubeDimZ,capTwo[0])
+    cmds.delete(capTwo[0] + ".f[0:3]", capTwo[0] + ".f[14:23]", capTwo[0] + ".f[34:43]", capTwo[0] + ".f[54:63]", capTwo[0] + ".f[74:79]")
+    components.append(capTwo[0])
+    
+    # Unite the cube and the caps
+    addShape = cmds.polyUnite(cube, components, ch=False)
+    #cmds.polyMergeVertex( addShape, d=0.15 )    
+    
+    currentHole = subtracts[0]
+    
+    for hole in range(len(subtracts)- 1):
+        uniteHole = cmds.polyUnite(currentHole, subtracts[hole+1], ch=False)
+        currentHole = uniteHole
+        
+    finalShape = cmds.polyCBoolOp(addShape, uniteHole, op=2, ch=False)[0]
+ 
+    
+    # Adding on the colour
+    #myShader = cmds.shadingNode('lambert', asShader=True, name="blockMaterial") 
+    #cmds.setAttr(myShader + ".color", rgb[0], rgb[1], rgb[2], type='double3')
+    #cmds.select(finalShape, r=True)
+    #cmds.hyperShade(assign=myShader)
+    cmds.namespace(set=":") '''	
